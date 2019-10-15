@@ -1,0 +1,36 @@
+syntax = "proto2";
+
+package proto;
+
+message Position {
+    required int32 x = 1;
+    required int32 y = 2;
+}
+
+enum PieceType {
+    NONE = 0; // No chess
+    BLANK = 1; // Firsthand
+    WHITE = 2; // Backhand
+}
+
+message PiecePosition {
+    required PieceType type = 1;
+    required Position position = 2;
+}
+
+message Board {
+    repeated PiecePosition chessPositions = 1; // All postions of board will be trans to you
+}
+
+message IsFirst {
+    required bool isFirst = 1;
+}
+
+message Status {
+    required bool status = 1;
+}
+
+service MakePieceService {
+    rpc Init(IsFirst) returns (Status) {}
+    rpc MakePiece(Board) returns (PiecePosition) {}
+}
