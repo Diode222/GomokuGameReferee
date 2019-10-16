@@ -24,4 +24,6 @@ var (
 
 	// MAX_THINKING_TIME
 	MAX_THINKING_TIME int
+
+	GAME_ID int
 )
