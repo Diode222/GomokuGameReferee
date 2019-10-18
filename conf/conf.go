@@ -1,8 +1,6 @@
 package conf
 
 const (
-	ETCD_ADDR = "127.0.0.1:2379"
-
 	// BACKEND_SERVICE_NAME
 	BACKEND_SERVICE_NAME = "backend_service"
 
@@ -10,20 +8,35 @@ const (
 	LOG_PATH_NAME = "game_log"
 )
 
+type PlayerState struct {
+	IsFirstHand bool
+	PieceType int
+}
+
 var (
-	// player1 SERVICE_NAME
-	PLAYER1_SERVICE_NAME string
+	PLAYER1_STATE *PlayerState
+	PLAYER2_STATE *PlayerState
 
-	// player2 SERVICE_NAME
-	PLAYER2_SERVICE_NAME string
+	FIRST_HAND_PORT = 47777
+	BACK_HAND_PORT = 47778
+)
 
-	PLAYER1_FIRST_HAND int // 1: true, 0: false
+var (
+	ETCD_ADDR string
+
+	IP = "127.0.0.1"
+
+	PLAYER1_PORT string
+
+	PLAYER2_PORT string
+
+	PLAYER1_FIRST_HAND string // "true": true, "false": false
 
 	BOARD_LENGTH = 15
 	BOARD_HEIGHT = 15
 
-	// MAX_THINKING_TIME
+	// max thinking time of each player
 	MAX_THINKING_TIME int
 
-	GAME_ID int
+	GAME_ID string
 )

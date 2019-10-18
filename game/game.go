@@ -3,6 +3,7 @@ package game
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/Diode222/GomokuGameReferee/client"
 	"github.com/Diode222/GomokuGameReferee/conf"
 	"github.com/Diode222/GomokuGameReferee/errorcode"
@@ -23,6 +24,7 @@ const (
 const (
 	BLANK = 0
 	WHITE = 1
+	NONE = 2
 )
 
 type Position struct {
@@ -38,16 +40,6 @@ type Operation struct {
 
 var operations = []*Operation{}
 
-type playerState struct {
-	IsFirstHand bool
-	PieceType int
-}
-
-var (
-	PLAYER1_STATE *playerState
-	PLAYER2_STATE *playerState
-)
-
 func StartGame() (int, int64, int64, []*Operation, error) {
 	var err error
 
@@ -59,8 +51,16 @@ func StartGame() (int, int64, int64, []*Operation, error) {
 
 	board, boardInfoMap := initBoard()
 
-	player1ServiceClient := client.NewPlayerServiceClient(conf.PLAYER1_SERVICE_NAME)
-	player2ServiceClient := client.NewPlayerServiceClient(conf.PLAYER2_SERVICE_NAME)
+	player1ServiceClient, err := client.NewPlayerServiceClient(conf.PLAYER1_PORT)
+	if err != nil {
+		t := time.Now().Unix()
+		return PLAYER2, t, t, operations, errors.New(errorcode.PLAYER1_TIMEOUT)
+	}
+	player2ServiceClient, err := client.NewPlayerServiceClient(conf.PLAYER2_PORT)
+	if err != nil {
+		t := time.Now().Unix()
+		return PLAYER1, t, t, operations, errors.New(errorcode.PLAYER2_TIMEOUT)
+	}
 
 	err = waitPlayerToInit(ctx, player1ServiceClient, player2ServiceClient)
 	if err != nil {
@@ -91,7 +91,7 @@ func initBoard() (*pb.Board, map[int]*pb.PiecePosition) {
 					Y: utils.GetPointerInt32(int32(y)),
 				},
 			}
-			board.ChessPositions = append(board.ChessPositions)
+			board.ChessPositions = append(board.ChessPositions, tmpPiecePosition)
 			boardInfoMap[y*conf.BOARD_LENGTH+x] = tmpPiecePosition
 		}
 	}
@@ -100,21 +100,21 @@ func initBoard() (*pb.Board, map[int]*pb.PiecePosition) {
 }
 
 func initPlayerStates() {
-	if conf.PLAYER1_FIRST_HAND == 1 {
-		PLAYER1_STATE = &playerState{
+	if conf.PLAYER1_FIRST_HAND == "true" {
+		conf.PLAYER1_STATE = &conf.PlayerState{
 			IsFirstHand: true,
 			PieceType:   BLANK,
 		}
-		PLAYER2_STATE = &playerState{
+		conf.PLAYER2_STATE = &conf.PlayerState{
 			IsFirstHand: false,
 			PieceType:   WHITE,
 		}
 	} else {
-		PLAYER1_STATE = &playerState{
+		conf.PLAYER1_STATE = &conf.PlayerState{
 			IsFirstHand: false,
 			PieceType:   WHITE,
 		}
-		PLAYER2_STATE = &playerState{
+		conf.PLAYER2_STATE = &conf.PlayerState{
 			IsFirstHand: true,
 			PieceType:   BLANK,
 		}
@@ -124,7 +124,7 @@ func initPlayerStates() {
 func waitPlayerToInit(ctx context.Context, player1ServiceClient, player2ServiceClient pb.MakePieceServiceClient) error {
 	var player1IsFirstHand bool
 	var err error
-	if conf.PLAYER1_FIRST_HAND == 1 {
+	if conf.PLAYER1_FIRST_HAND == "true" {
 		// player1 is first hand
 		player1IsFirstHand = true
 	} else {
@@ -135,32 +135,32 @@ func waitPlayerToInit(ctx context.Context, player1ServiceClient, player2ServiceC
 		IsFirst: utils.GetPointerBool(player1IsFirstHand),
 	})
 	if err != nil {
-		err = errors.New(errorcode.PLAYER1_TIMEOUT)
+		return errors.New(errorcode.PLAYER1_TIMEOUT)
 	}
 	_, err = player2ServiceClient.Init(ctx, &pb.IsFirst{
 		IsFirst: utils.GetPointerBool(!player1IsFirstHand),
 	})
 	if err != nil {
-		err = errors.New(errorcode.PLAYER2_TIMEOUT)
+		return errors.New(errorcode.PLAYER2_TIMEOUT)
 	}
-	return err
+	return nil
 }
 
 func playGame(ctx context.Context, player1ServiceClient, player2ServiceClient pb.MakePieceServiceClient, board *pb.Board, boardInfoMap map[int]*pb.PiecePosition) (int, int64, int64, error) {
 	clients := []pb.MakePieceServiceClient{}
-	if conf.PLAYER1_FIRST_HAND == 1 {
-		clients[0] = player1ServiceClient
-		clients[1] = player2ServiceClient
+	if conf.PLAYER1_FIRST_HAND == "true" {
+		clients = append(clients, player1ServiceClient)
+		clients = append(clients, player2ServiceClient)
 	} else {
-		clients[0] = player2ServiceClient
-		clients[1] = player1ServiceClient
+		clients = append(clients, player2ServiceClient)
+		clients = append(clients, player1ServiceClient)
 	}
 
 	startTime := time.Now().Unix()
 
 	gameIsOver, winner := gameOver(boardInfoMap)
 	var isPlayer1Current bool
-	if conf.PLAYER1_FIRST_HAND == 1 {
+	if conf.PLAYER1_FIRST_HAND == "true" {
 		isPlayer1Current = true
 	} else {
 		isPlayer1Current = false
@@ -324,13 +324,13 @@ func gameOverHelp(positionX, positionY int, boardInfoMap map[int]*pb.PiecePositi
 
 func getGameOverInfo(chessType pb.PieceType) (bool, int) {
 	if chessType == pb.PieceType_BLANK {
-		if conf.PLAYER1_FIRST_HAND == 1 {
+		if conf.PLAYER1_FIRST_HAND == "true" {
 			return true, PLAYER1
 		} else {
 			return true, PLAYER2
 		}
 	} else if chessType == pb.PieceType_WHITE {
-		if conf.PLAYER1_FIRST_HAND == 1 {
+		if conf.PLAYER1_FIRST_HAND == "true" {
 			return true, PLAYER2
 		} else {
 			return true, PLAYER1
@@ -356,10 +356,15 @@ func makePiece(ctx context.Context, playerClient pb.MakePieceServiceClient, boar
 	var operationType int
 	if isPlayer1Current {
 		currentPlayer = PLAYER1
-		operationType = PLAYER1_STATE.PieceType
 	} else {
 		currentPlayer = PLAYER2
-		operationType = PLAYER2_STATE.PieceType
+	}
+	if piecePosition.GetType() == pb.PieceType_BLANK {
+		operationType = BLANK
+	} else if piecePosition.GetType() == pb.PieceType_WHITE {
+		operationType = WHITE
+	} else {
+		operationType = NONE
 	}
 	operations = append(operations, &Operation{
 		Player:   currentPlayer,
@@ -367,7 +372,7 @@ func makePiece(ctx context.Context, playerClient pb.MakePieceServiceClient, boar
 		Type:     operationType,
 	})
 
-	if piecePosition.GetType() != pb.PieceType_BLANK || piecePosition.GetType() != pb.PieceType_WHITE {
+	if piecePosition.GetType() == pb.PieceType_NONE {
 		if currentPlayer == PLAYER1 {
 			return errors.New(errorcode.PLAYER1_WRONG_OPERATION)
 		} else {
@@ -398,10 +403,11 @@ func makePiece(ctx context.Context, playerClient pb.MakePieceServiceClient, boar
 	} else {
 		pieceType = WHITE
 	}
-	if currentPlayer == PLAYER1 && pieceType != PLAYER1_STATE.PieceType {
+	if currentPlayer == PLAYER1 && pieceType != conf.PLAYER1_STATE.PieceType {
 		return errors.New(errorcode.PLAYER1_WRONG_OPERATION)
 	}
-	if currentPlayer == PLAYER2 && pieceType != PLAYER2_STATE.PieceType {
+	if currentPlayer == PLAYER2 && pieceType != conf.PLAYER2_STATE.PieceType {
+		fmt.Println(piecePosition.GetType().Enum())
 		return errors.New(errorcode.PLAYER2_WRONG_OPERATION)
 	}
 
@@ -415,8 +421,7 @@ func makePiece(ctx context.Context, playerClient pb.MakePieceServiceClient, boar
 		}
 	}
 
-	piecePositionOld.Position.X = utils.GetPointerInt32(piecePosition.GetPosition().GetX())
-	piecePositionOld.Position.Y = utils.GetPointerInt32(piecePosition.GetPosition().GetY())
+	piecePositionOld.Type = piecePosition.Type
 
 	return nil
 }

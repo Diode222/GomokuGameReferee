@@ -1,11 +1,20 @@
 package client
 
 import (
+	"fmt"
 	"github.com/Diode222/GomokuGameReferee/conf"
 	pb "github.com/Diode222/GomokuGameReferee/probo"
-	"github.com/Diode222/etcd_service_discovery/etcdservice"
+	"google.golang.org/grpc"
+	"log"
 )
 
-func NewPlayerServiceClient(serviceName string) pb.MakePieceServiceClient {
-	return etcdservice.NewServiceManager(conf.ETCD_ADDR).GetClient(serviceName, pb.NewMakePieceServiceClientWrapper).(pb.MakePieceServiceClient)
+func NewPlayerServiceClient(port string) (pb.MakePieceServiceClient, error) {
+	sreviceAddr := fmt.Sprintf("%s:%s", conf.IP, port)
+	conn, err := grpc.Dial(sreviceAddr, grpc.WithInsecure())
+	if err != nil {
+		log.Println(fmt.Sprintf("Connect to %s failed", sreviceAddr))
+		return nil, err
+	}
+
+	return pb.NewMakePieceServiceClient(conn), nil
 }
