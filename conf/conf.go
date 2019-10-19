@@ -17,18 +17,15 @@ var (
 	PLAYER1_STATE *PlayerState
 	PLAYER2_STATE *PlayerState
 
-	FIRST_HAND_PORT = 47777
-	BACK_HAND_PORT = 47778
+	REFEREE_LOG_FILE = "referee.log"
 )
 
 var (
-	ETCD_ADDR string
-
 	IP = "127.0.0.1"
 
-	PLAYER1_PORT string
+	PLAYER1_PORT = "10001"
 
-	PLAYER2_PORT string
+	PLAYER2_PORT = "10002"
 
 	PLAYER1_FIRST_HAND string // "true": true, "false": false
 
@@ -39,4 +36,14 @@ var (
 	MAX_THINKING_TIME int
 
 	GAME_ID string
+
+	NSQ_ADDR string
+
+	NSQ_TOPIC_LOG string
+
+	NSQ_TOPIC_GAME_RESULT string
+
+	LOG_VOLUME_ADDR_PLAYER1 string
+
+	LOG_VOLUME_ADDR_PLAYER2 string
 )

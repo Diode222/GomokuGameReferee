@@ -9,7 +9,7 @@ import (
 	"github.com/Diode222/GomokuGameReferee/errorcode"
 	pb "github.com/Diode222/GomokuGameReferee/probo"
 	"github.com/Diode222/GomokuGameReferee/utils"
-	"log"
+	"github.com/sirupsen/logrus"
 	"time"
 )
 
@@ -53,11 +53,17 @@ func StartGame() (int, int64, int64, []*Operation, error) {
 
 	player1ServiceClient, err := client.NewPlayerServiceClient(conf.PLAYER1_PORT)
 	if err != nil {
+		logrus.WithFields(logrus.Fields{
+			"err": err.Error(),
+		}).Fatal("player1 get service client failed.")
 		t := time.Now().Unix()
 		return PLAYER2, t, t, operations, errors.New(errorcode.PLAYER1_TIMEOUT)
 	}
 	player2ServiceClient, err := client.NewPlayerServiceClient(conf.PLAYER2_PORT)
 	if err != nil {
+		logrus.WithFields(logrus.Fields{
+			"err": err.Error(),
+		}).Fatal("player2 get service client failed.")
 		t := time.Now().Unix()
 		return PLAYER1, t, t, operations, errors.New(errorcode.PLAYER2_TIMEOUT)
 	}
@@ -66,8 +72,14 @@ func StartGame() (int, int64, int64, []*Operation, error) {
 	if err != nil {
 		t := time.Now().Unix()
 		if err.Error() == errorcode.PLAYER1_TIMEOUT {
+			logrus.WithFields(logrus.Fields{
+				"err": err.Error(),
+			}).Fatal("player1 init failed.")
 			return PLAYER2, t, t, operations, err
 		} else {
+			logrus.WithFields(logrus.Fields{
+				"err": err.Error(),
+			}).Fatal("player2 init failed.")
 			return PLAYER1, t, t, operations, err
 		}
 	}
@@ -343,10 +355,15 @@ func getGameOverInfo(chessType pb.PieceType) (bool, int) {
 func makePiece(ctx context.Context, playerClient pb.MakePieceServiceClient, board *pb.Board, boardInfoMap map[int]*pb.PiecePosition, isPlayer1Current bool) error {
 	piecePosition, err := playerClient.MakePiece(ctx, board)
 	if err != nil {
-		log.Println(err.Error())
 		if isPlayer1Current {
+			logrus.WithFields(logrus.Fields{
+				"err": err.Error(),
+			}).Fatal("player1 makePiece failed.")
 			return errors.New(errorcode.PLAYER2_TIMEOUT)
 		} else {
+			logrus.WithFields(logrus.Fields{
+				"err": err.Error(),
+			}).Fatal("player2 makePiece failed.")
 			return errors.New(errorcode.PLAYER1_TIMEOUT)
 		}
 	}
@@ -374,16 +391,20 @@ func makePiece(ctx context.Context, playerClient pb.MakePieceServiceClient, boar
 
 	if piecePosition.GetType() == pb.PieceType_NONE {
 		if currentPlayer == PLAYER1 {
+			logrus.Fatal(fmt.Sprintf("player1 make none type piece."))
 			return errors.New(errorcode.PLAYER1_WRONG_OPERATION)
 		} else {
+			logrus.Fatal(fmt.Sprintf("player2 make none type piece."))
 			return errors.New(errorcode.PLAYER2_WRONG_OPERATION)
 		}
 	}
 
 	if piecePosition.GetPosition() == nil {
 		if currentPlayer == PLAYER1 {
+			logrus.Fatal(fmt.Sprintf("player1's piece making didn't return position."))
 			return errors.New(errorcode.PLAYER1_WRONG_OPERATION)
 		} else {
+			logrus.Fatal(fmt.Sprintf("player2's piece making didn't return position."))
 			return errors.New(errorcode.PLAYER2_WRONG_OPERATION)
 		}
 	}
@@ -391,8 +412,20 @@ func makePiece(ctx context.Context, playerClient pb.MakePieceServiceClient, boar
 	if int(piecePosition.GetPosition().GetX()) > conf.BOARD_LENGTH || int(piecePosition.GetPosition().GetX()) < 0 ||
 		int(piecePosition.GetPosition().GetY()) > conf.BOARD_HEIGHT || int(piecePosition.GetPosition().GetY()) < 0 {
 		if currentPlayer == PLAYER1 {
+			logrus.WithFields(logrus.Fields{
+				"x": piecePosition.GetPosition().GetX(),
+				"y": piecePosition.GetPosition().GetY(),
+				"board_length": conf.BOARD_LENGTH,
+				"board_height": conf.BOARD_HEIGHT,
+			}).Fatal(fmt.Sprintf("player1's position of piece making out of board size."))
 			return errors.New(errorcode.PLAYER1_WRONG_OPERATION)
 		} else {
+			logrus.WithFields(logrus.Fields{
+				"x": piecePosition.GetPosition().GetX(),
+				"y": piecePosition.GetPosition().GetY(),
+				"board_length": conf.BOARD_LENGTH,
+				"board_height": conf.BOARD_HEIGHT,
+			}).Fatal(fmt.Sprintf("player2's position of piece making out of board size."))
 			return errors.New(errorcode.PLAYER2_WRONG_OPERATION)
 		}
 	}
@@ -404,10 +437,17 @@ func makePiece(ctx context.Context, playerClient pb.MakePieceServiceClient, boar
 		pieceType = WHITE
 	}
 	if currentPlayer == PLAYER1 && pieceType != conf.PLAYER1_STATE.PieceType {
+		logrus.WithFields(logrus.Fields{
+			"makePieceType": pieceType,
+			"player1PieceType": conf.PLAYER1_STATE.PieceType,
+		}).Fatal(fmt.Sprintf("player1 make wrong type of piece."))
 		return errors.New(errorcode.PLAYER1_WRONG_OPERATION)
 	}
 	if currentPlayer == PLAYER2 && pieceType != conf.PLAYER2_STATE.PieceType {
-		fmt.Println(piecePosition.GetType().Enum())
+		logrus.WithFields(logrus.Fields{
+			"makePieceType": pieceType,
+			"player2PieceType": conf.PLAYER2_STATE.PieceType,
+		}).Fatal(fmt.Sprintf("player2 make wrong type of piece."))
 		return errors.New(errorcode.PLAYER2_WRONG_OPERATION)
 	}
 
@@ -415,8 +455,10 @@ func makePiece(ctx context.Context, playerClient pb.MakePieceServiceClient, boar
 
 	if piecePositionOld.GetType() != pb.PieceType_NONE {
 		if currentPlayer == PLAYER1 {
+			logrus.Fatal("player1's position of piece making has already got one piece.")
 			return errors.New(errorcode.PLAYER1_WRONG_OPERATION)
 		} else {
+			logrus.Fatal("player2's position of piece making has already got one piece.")
 			return errors.New(errorcode.PLAYER2_WRONG_OPERATION)
 		}
 	}
