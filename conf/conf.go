@@ -10,7 +10,7 @@ const (
 
 type PlayerState struct {
 	IsFirstHand bool
-	PieceType int
+	PieceType   int
 }
 
 var (
@@ -37,9 +37,17 @@ var (
 
 	GAME_ID string
 
+	PLAYER1_ID string
+
+	PLAYER2_ID string
+
 	NSQ_ADDR string
 
-	NSQ_TOPIC_LOG string
+	NSQ_TOPIC_LOG_PLAYER1 string
+
+	NSQ_TOPIC_LOG_PLAYER2 string
+
+	NSQ_TOPIC_REFEREE_LOG string
 
 	NSQ_TOPIC_GAME_RESULT string
 

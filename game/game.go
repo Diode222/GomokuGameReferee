@@ -7,6 +7,7 @@ import (
 	"github.com/Diode222/GomokuGameReferee/client"
 	"github.com/Diode222/GomokuGameReferee/conf"
 	"github.com/Diode222/GomokuGameReferee/errorcode"
+	"github.com/Diode222/GomokuGameReferee/model"
 	pb "github.com/Diode222/GomokuGameReferee/probo"
 	"github.com/Diode222/GomokuGameReferee/utils"
 	"github.com/sirupsen/logrus"
@@ -21,26 +22,9 @@ const (
 	NOT_OVER = 3
 )
 
-const (
-	BLANK = 0
-	WHITE = 1
-	NONE = 2
-)
+var operations = []*model.Operation{}
 
-type Position struct {
-	X int32
-	Y int32
-}
-
-type Operation struct {
-	Player   int
-	Position *Position
-	Type     int
-}
-
-var operations = []*Operation{}
-
-func StartGame() (int, int64, int64, []*Operation, error) {
+func StartGame() (int, int64, int64, []*model.Operation, error) {
 	var err error
 
 	// player can judge if stop move when timeout
@@ -115,20 +99,20 @@ func initPlayerStates() {
 	if conf.PLAYER1_FIRST_HAND == "true" {
 		conf.PLAYER1_STATE = &conf.PlayerState{
 			IsFirstHand: true,
-			PieceType:   BLANK,
+			PieceType:   model.BLANK,
 		}
 		conf.PLAYER2_STATE = &conf.PlayerState{
 			IsFirstHand: false,
-			PieceType:   WHITE,
+			PieceType:   model.WHITE,
 		}
 	} else {
 		conf.PLAYER1_STATE = &conf.PlayerState{
 			IsFirstHand: false,
-			PieceType:   WHITE,
+			PieceType:   model.WHITE,
 		}
 		conf.PLAYER2_STATE = &conf.PlayerState{
 			IsFirstHand: true,
-			PieceType:   BLANK,
+			PieceType:   model.BLANK,
 		}
 	}
 }
@@ -377,15 +361,15 @@ func makePiece(ctx context.Context, playerClient pb.MakePieceServiceClient, boar
 		currentPlayer = PLAYER2
 	}
 	if piecePosition.GetType() == pb.PieceType_BLANK {
-		operationType = BLANK
+		operationType = model.BLANK
 	} else if piecePosition.GetType() == pb.PieceType_WHITE {
-		operationType = WHITE
+		operationType = model.WHITE
 	} else {
-		operationType = NONE
+		operationType = model.NONE
 	}
-	operations = append(operations, &Operation{
+	operations = append(operations, &model.Operation{
 		Player:   currentPlayer,
-		Position: &Position{X: piecePosition.GetPosition().GetX(), Y: piecePosition.GetPosition().GetY()},
+		Position: &model.Position{X: piecePosition.GetPosition().GetX(), Y: piecePosition.GetPosition().GetY()},
 		Type:     operationType,
 	})
 
@@ -413,16 +397,16 @@ func makePiece(ctx context.Context, playerClient pb.MakePieceServiceClient, boar
 		int(piecePosition.GetPosition().GetY()) > conf.BOARD_HEIGHT || int(piecePosition.GetPosition().GetY()) < 0 {
 		if currentPlayer == PLAYER1 {
 			logrus.WithFields(logrus.Fields{
-				"x": piecePosition.GetPosition().GetX(),
-				"y": piecePosition.GetPosition().GetY(),
+				"x":            piecePosition.GetPosition().GetX(),
+				"y":            piecePosition.GetPosition().GetY(),
 				"board_length": conf.BOARD_LENGTH,
 				"board_height": conf.BOARD_HEIGHT,
 			}).Fatal(fmt.Sprintf("player1's position of piece making out of board size."))
 			return errors.New(errorcode.PLAYER1_WRONG_OPERATION)
 		} else {
 			logrus.WithFields(logrus.Fields{
-				"x": piecePosition.GetPosition().GetX(),
-				"y": piecePosition.GetPosition().GetY(),
+				"x":            piecePosition.GetPosition().GetX(),
+				"y":            piecePosition.GetPosition().GetY(),
 				"board_length": conf.BOARD_LENGTH,
 				"board_height": conf.BOARD_HEIGHT,
 			}).Fatal(fmt.Sprintf("player2's position of piece making out of board size."))
@@ -432,20 +416,20 @@ func makePiece(ctx context.Context, playerClient pb.MakePieceServiceClient, boar
 
 	var pieceType int
 	if piecePosition.GetType() == pb.PieceType_BLANK {
-		pieceType = BLANK
+		pieceType = model.BLANK
 	} else {
-		pieceType = WHITE
+		pieceType = model.WHITE
 	}
 	if currentPlayer == PLAYER1 && pieceType != conf.PLAYER1_STATE.PieceType {
 		logrus.WithFields(logrus.Fields{
-			"makePieceType": pieceType,
+			"makePieceType":    pieceType,
 			"player1PieceType": conf.PLAYER1_STATE.PieceType,
 		}).Fatal(fmt.Sprintf("player1 make wrong type of piece."))
 		return errors.New(errorcode.PLAYER1_WRONG_OPERATION)
 	}
 	if currentPlayer == PLAYER2 && pieceType != conf.PLAYER2_STATE.PieceType {
 		logrus.WithFields(logrus.Fields{
-			"makePieceType": pieceType,
+			"makePieceType":    pieceType,
 			"player2PieceType": conf.PLAYER2_STATE.PieceType,
 		}).Fatal(fmt.Sprintf("player2 make wrong type of piece."))
 		return errors.New(errorcode.PLAYER2_WRONG_OPERATION)

@@ -1,5 +1,7 @@
 package feedbackData
 
-func TransError(err error) {
+// TODO
+// Should panic when transmission finished.
+func TransServerError(err error) {
 
 }
