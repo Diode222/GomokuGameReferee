@@ -3,6 +3,7 @@ package feedbackData
 import (
 	"bufio"
 	"encoding/json"
+	"errors"
 	"github.com/Diode222/GomokuGameReferee/client"
 	"github.com/Diode222/GomokuGameReferee/conf"
 	"github.com/Diode222/GomokuGameReferee/errorcode"
@@ -76,6 +77,7 @@ func TransData(winner int, startTime int64, endTime int64, operations []*model.O
 		EndTime:          endTime,
 		Operations:       operations,
 		FoulPlayer:       foulPlayer,
+		ServerError: false,
 	}
 
 	binaryMatchData, err := json.Marshal(matchData)
@@ -103,10 +105,15 @@ func transGameResultData(data []byte, nsqProducer *nsq.Producer) {
 	if err != nil {
 		logrus.WithFields(logrus.Fields{
 			"topic":    conf.NSQ_TOPIC_GAME_RESULT,
-			"nsq_addr": conf.NSQ_ADDR,
+			"nsq_addr": conf.NSQ_PUBLISH_ADDR,
 			"err":      err.Error(),
 		}).Fatal("nsq publish failed.")
 		TransServerError(err)
+	}
+	i := 0
+	for ; nsqProducer.Publish(conf.NSQ_TOPIC_GAME_RESULT, data) != nil && i < 10; i++ {}
+	if i == 10 {
+		TransServerError(errors.New("tranData error"))
 	}
 }
 
@@ -131,12 +138,12 @@ func transPlayer1LogData(nsqProducer *nsq.Producer) {
 		line, _, err := buf.ReadLine()
 		if err != nil {
 			if err == io.EOF {
-				for nsqProducer.Publish(conf.NSQ_TOPIC_LOG_PLAYER1, line) != nil {
-				}
+				for nsqProducer.Publish(conf.NSQ_TOPIC_LOG_PLAYER1, []byte(conf.EOF_FLAG)) != nil {}
 				break
 			}
 			continue
 		}
+		nsqProducer.Publish(conf.NSQ_TOPIC_LOG_PLAYER1, line)
 	}
 }
 
@@ -155,12 +162,13 @@ func transPlayer2LogData(nsqProducer *nsq.Producer) {
 		line, _, err := buf.ReadLine()
 		if err != nil {
 			if err == io.EOF {
-				for nsqProducer.Publish(conf.NSQ_TOPIC_LOG_PLAYER2, line) != nil {
+				for nsqProducer.Publish(conf.NSQ_TOPIC_LOG_PLAYER2, []byte(conf.EOF_FLAG)) != nil {
 				}
 				break
 			}
 			continue
 		}
+		nsqProducer.Publish(conf.NSQ_TOPIC_LOG_PLAYER2, line)
 	}
 }
 
@@ -179,11 +187,12 @@ func transRefereeLogData(nsqProducer *nsq.Producer) {
 		line, _, err := buf.ReadLine()
 		if err != nil {
 			if err == io.EOF {
-				for nsqProducer.Publish(conf.NSQ_TOPIC_REFEREE_LOG, line) != nil {
+				for nsqProducer.Publish(conf.NSQ_TOPIC_REFEREE_LOG, []byte(conf.EOF_FLAG)) != nil {
 				}
 				break
 			}
 			continue
 		}
+		nsqProducer.Publish(conf.NSQ_TOPIC_REFEREE_LOG, line)
 	}
 }

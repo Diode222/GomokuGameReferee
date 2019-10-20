@@ -6,6 +6,8 @@ const (
 
 	// LOG_PATH_NAME
 	LOG_PATH_NAME = "game_log"
+
+	EOF_FLAG = "EOFEOF"
 )
 
 type PlayerState struct {
@@ -41,7 +43,7 @@ var (
 
 	PLAYER2_ID string
 
-	NSQ_ADDR string
+	NSQ_PUBLISH_ADDR string
 
 	NSQ_TOPIC_LOG_PLAYER1 string
 
