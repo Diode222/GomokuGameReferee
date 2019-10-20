@@ -13,6 +13,7 @@ type MatchDataModel struct {
 	EndTime          int64        `json:"end_time"`
 	Operations       []*Operation `json:"operations"`
 	FoulPlayer       int          `json:"foul_player"` // 0: no foul, 1: player1 foul, 2: player2 foul
+	ServerError bool `json:"server_error"` // Server failure, game is invalid
 }
 
 const (

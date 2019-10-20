@@ -6,7 +6,7 @@ import (
 )
 
 func NewNsqClient() (*nsq.Producer, error) {
-	producer, err := nsq.NewProducer(conf.NSQ_ADDR, nsq.NewConfig())
+	producer, err := nsq.NewProducer(conf.NSQ_PUBLISH_ADDR, nsq.NewConfig())
 	if err != nil {
 		return nil, err
 	}
