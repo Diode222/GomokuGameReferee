@@ -1,0 +1,76 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: match-game
+  labels:
+    app: match-game
+spec:
+  volumes:
+  - name: match-logs
+    emptyDir: {}
+
+  containers:
+  - name: gomoku-game-referee
+    image: registry.cn-hangzhou.aliyuncs.com/gomoku_game/gomoku_game_referee:test
+    imagePullPolicy: Always
+    ports:
+    - containerPort: 10003
+    volumeMounts:
+    - name: match-logs
+      mountPath: /match_logs
+    env:
+    - name: PLAYER1_FIRST_HAND
+      value: "true"
+    - name: MAX_THINKING_TIME
+      value: "5"
+    - name: GAME_ID
+      value: "3743"
+    - name: PLAYER1_ID
+      value: "0534"
+    - name: PLAYER2_ID
+      value: "0535"
+    - name: NSQ_PUBLISH_ADDR
+      value: "10.244.0.1:4150"
+    - name: LOG_VOLUME_ADDR_PLAYER1
+      value: "/match_logs/player1_log"
+    - name: LOG_VOLUME_ADDR_PLAYER2
+      value: "/match_logs/player2_log"
+    command: ["./main"]
+ 
+  - name: gomoku-game-player1
+    image: registry.cn-hangzhou.aliyuncs.com/gomoku_game/gomoku_game_impl:test
+    imagePullPolicy: Always
+    ports:
+    - containerPort: 10001
+    volumeMounts:
+    - name: match-logs
+      mountPath: /match_logs
+    resources:
+      limits:
+        cpu: 256m
+        memory: 512Mi
+    env:
+    - name: LOG_VOLUME_ADDR
+      value: "/match_logs/player1_log"
+    - name: PORT
+      value: "10001"
+    command: ["./main"]
+
+  - name: gomoku-game-player2
+    image: registry.cn-hangzhou.aliyuncs.com/gomoku_game/gomoku_game_impl:test
+    imagePullPolicy: Always
+    ports:
+    - containerPort: 10002
+    volumeMounts:
+    - name: match-logs
+      mountPath: /match_logs
+    resources:
+      limits:
+        cpu: 256m
+        memory: 512Mi
+    env:
+    - name: LOG_VOLUME_ADDR
+      value: "/match_logs/player2_log"
+    - name: PORT
+      value: "10002"
+    command: ["./main"]
